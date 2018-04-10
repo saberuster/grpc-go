@@ -22,7 +22,6 @@ import (
 	"bytes"
 	"compress/gzip"
 	"encoding/binary"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"math"
@@ -43,49 +42,8 @@ import (
 	"google.golang.org/grpc/transport"
 )
 
-// Compressor defines the interface gRPC uses to compress a message.
-//
-// Deprecated: use package encoding.
-type Compressor interface {
-	// Do compresses p into w.
-	Do(w io.Writer, p []byte) error
-	// Type returns the compression algorithm the Compressor uses.
-	Type() string
-}
-
 type gzipCompressor struct {
 	pool sync.Pool
-}
-
-// NewGZIPCompressor creates a Compressor based on GZIP.
-//
-// Deprecated: use package encoding/gzip.
-func NewGZIPCompressor() Compressor {
-	c, _ := NewGZIPCompressorWithLevel(gzip.DefaultCompression)
-	return c
-}
-
-// NewGZIPCompressorWithLevel is like NewGZIPCompressor but specifies the gzip compression level instead
-// of assuming DefaultCompression.
-//
-// The error returned will be nil if the level is valid.
-//
-// Deprecated: use package encoding/gzip.
-func NewGZIPCompressorWithLevel(level int) (Compressor, error) {
-	if level < gzip.DefaultCompression || level > gzip.BestCompression {
-		return nil, fmt.Errorf("grpc: invalid compression level: %d", level)
-	}
-	return &gzipCompressor{
-		pool: sync.Pool{
-			New: func() interface{} {
-				w, err := gzip.NewWriterLevel(ioutil.Discard, level)
-				if err != nil {
-					panic(err)
-				}
-				return w
-			},
-		},
-	}, nil
 }
 
 func (c *gzipCompressor) Do(w io.Writer, p []byte) error {
@@ -102,25 +60,10 @@ func (c *gzipCompressor) Type() string {
 	return "gzip"
 }
 
-// Decompressor defines the interface gRPC uses to decompress a message.
-//
-// Deprecated: use package encoding.
-type Decompressor interface {
-	// Do reads the data from r and uncompress them.
-	Do(r io.Reader) ([]byte, error)
-	// Type returns the compression algorithm the Decompressor uses.
-	Type() string
-}
+
 
 type gzipDecompressor struct {
 	pool sync.Pool
-}
-
-// NewGZIPDecompressor creates a Decompressor based on GZIP.
-//
-// Deprecated: use package encoding/gzip.
-func NewGZIPDecompressor() Decompressor {
-	return &gzipDecompressor{}
 }
 
 func (d *gzipDecompressor) Do(r io.Reader) ([]byte, error) {
@@ -622,35 +565,6 @@ func rpcInfoFromContext(ctx context.Context) (s *rpcInfo, ok bool) {
 	return
 }
 
-// Code returns the error code for err if it was produced by the rpc system.
-// Otherwise, it returns codes.Unknown.
-//
-// Deprecated: use status.FromError and Code method instead.
-func Code(err error) codes.Code {
-	if s, ok := status.FromError(err); ok {
-		return s.Code()
-	}
-	return codes.Unknown
-}
-
-// ErrorDesc returns the error description of err if it was produced by the rpc system.
-// Otherwise, it returns err.Error() or empty string when err is nil.
-//
-// Deprecated: use status.FromError and Message method instead.
-func ErrorDesc(err error) string {
-	if s, ok := status.FromError(err); ok {
-		return s.Message()
-	}
-	return err.Error()
-}
-
-// Errorf returns an error containing an error code and a description;
-// Errorf returns nil if c is OK.
-//
-// Deprecated: use status.Errorf instead.
-func Errorf(c codes.Code, format string, a ...interface{}) error {
-	return status.Errorf(c, format, a...)
-}
 
 // setCallInfoCodec should only be called after CallOptions have been applied.
 func setCallInfoCodec(c *callInfo) error {

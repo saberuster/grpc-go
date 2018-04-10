@@ -196,29 +196,7 @@ func CustomCodec(codec Codec) ServerOption {
 	}
 }
 
-// RPCCompressor returns a ServerOption that sets a compressor for outbound
-// messages.  For backward compatibility, all outbound messages will be sent
-// using this compressor, regardless of incoming message compression.  By
-// default, server messages will be sent using the same compressor with which
-// request messages were sent.
-//
-// Deprecated: use encoding.RegisterCompressor instead.
-func RPCCompressor(cp Compressor) ServerOption {
-	return func(o *options) {
-		o.cp = cp
-	}
-}
 
-// RPCDecompressor returns a ServerOption that sets a decompressor for inbound
-// messages.  It has higher priority than decompressors registered via
-// encoding.RegisterCompressor.
-//
-// Deprecated: use encoding.RegisterCompressor instead.
-func RPCDecompressor(dc Decompressor) ServerOption {
-	return func(o *options) {
-		o.dc = dc
-	}
-}
 
 // MaxMsgSize returns a ServerOption to set the max message size in bytes the server can receive.
 // If this is not set, gRPC uses the default limit. Deprecated: use MaxRecvMsgSize instead.

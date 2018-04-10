@@ -28,11 +28,6 @@ import (
 	"golang.org/x/net/context"
 )
 
-// DecodeKeyValue returns k, v, nil.  It is deprecated and should not be used.
-func DecodeKeyValue(k, v string) (string, string, error) {
-	return k, v, nil
-}
-
 // MD is a mapping from metadata keys to values. Users should use the following
 // two convenience functions New and Pairs to generate MD.
 type MD map[string][]string

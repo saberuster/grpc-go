@@ -52,12 +52,6 @@ const (
 )
 
 var (
-	// ErrClientConnClosing indicates that the operation is illegal because
-	// the ClientConn is closing.
-	//
-	// Deprecated: this error should not be relied upon by users; use the status
-	// code of Canceled instead.
-	ErrClientConnClosing = status.Error(codes.Canceled, "grpc: the client connection is closing")
 	// errConnDrain indicates that the connection starts to be drained and does not accept any new RPCs.
 	errConnDrain = errors.New("grpc: the connection is drained")
 	// errConnClosing indicates that the connection is closing.
@@ -180,51 +174,6 @@ func WithDefaultCallOptions(cos ...CallOption) DialOption {
 	}
 }
 
-// WithCodec returns a DialOption which sets a codec for message marshaling and unmarshaling.
-//
-// Deprecated: use WithDefaultCallOptions(CallCustomCodec(c)) instead.
-func WithCodec(c Codec) DialOption {
-	return WithDefaultCallOptions(CallCustomCodec(c))
-}
-
-// WithCompressor returns a DialOption which sets a Compressor to use for
-// message compression. It has lower priority than the compressor set by
-// the UseCompressor CallOption.
-//
-// Deprecated: use UseCompressor instead.
-func WithCompressor(cp Compressor) DialOption {
-	return func(o *dialOptions) {
-		o.cp = cp
-	}
-}
-
-// WithDecompressor returns a DialOption which sets a Decompressor to use for
-// incoming message decompression.  If incoming response messages are encoded
-// using the decompressor's Type(), it will be used.  Otherwise, the message
-// encoding will be used to look up the compressor registered via
-// encoding.RegisterCompressor, which will then be used to decompress the
-// message.  If no compressor is registered for the encoding, an Unimplemented
-// status error will be returned.
-//
-// Deprecated: use encoding.RegisterCompressor instead.
-func WithDecompressor(dc Decompressor) DialOption {
-	return func(o *dialOptions) {
-		o.dc = dc
-	}
-}
-
-// WithBalancer returns a DialOption which sets a load balancer with the v1 API.
-// Name resolver will be ignored if this DialOption is specified.
-//
-// Deprecated: use the new balancer APIs in balancer package and WithBalancerName.
-func WithBalancer(b Balancer) DialOption {
-	return func(o *dialOptions) {
-		o.balancerBuilder = &balancerWrapperBuilder{
-			b: b,
-		}
-	}
-}
-
 // WithBalancerName sets the balancer that the ClientConn will be initialized
 // with. Balancer registered with balancerName will be used. This function
 // panics if no balancer was registered by balancerName.
@@ -250,14 +199,6 @@ func withResolverBuilder(b resolver.Builder) DialOption {
 	}
 }
 
-// WithServiceConfig returns a DialOption which has a channel to read the service configuration.
-// DEPRECATED: service config should be received through name resolver, as specified here.
-// https://github.com/grpc/grpc/blob/master/doc/service_config.md
-func WithServiceConfig(c <-chan ServiceConfig) DialOption {
-	return func(o *dialOptions) {
-		o.scChan = c
-	}
-}
 
 // WithBackoffMaxDelay configures the dialer to use the provided maximum delay
 // when backing off after failed connection attempts.
@@ -317,15 +258,6 @@ func WithTransportCredentials(creds credentials.TransportCredentials) DialOption
 func WithPerRPCCredentials(creds credentials.PerRPCCredentials) DialOption {
 	return func(o *dialOptions) {
 		o.copts.PerRPCCredentials = append(o.copts.PerRPCCredentials, creds)
-	}
-}
-
-// WithTimeout returns a DialOption that configures a timeout for dialing a ClientConn
-// initially. This is valid if and only if WithBlock() is present.
-// Deprecated: use DialContext and context.WithTimeout instead.
-func WithTimeout(d time.Duration) DialOption {
-	return func(o *dialOptions) {
-		o.timeout = d
 	}
 }
 
@@ -1412,42 +1344,6 @@ func (ac *addrConn) getReadyTransport() (transport.ClientTransport, bool) {
 	return nil, false
 }
 
-// tearDown starts to tear down the addrConn.
-// TODO(zhaoq): Make this synchronous to avoid unbounded memory consumption in
-// some edge cases (e.g., the caller opens and closes many addrConn's in a
-// tight loop.
-// tearDown doesn't remove ac from ac.cc.conns.
-func (ac *addrConn) tearDown(err error) {
-	ac.cancel()
-	ac.mu.Lock()
-	defer ac.mu.Unlock()
-	if ac.state == connectivity.Shutdown {
-		return
-	}
-	ac.curAddr = resolver.Address{}
-	if err == errConnDrain && ac.transport != nil {
-		// GracefulClose(...) may be executed multiple times when
-		// i) receiving multiple GoAway frames from the server; or
-		// ii) there are concurrent name resolver/Balancer triggered
-		// address removal and GoAway.
-		ac.transport.GracefulClose()
-	}
-	ac.state = connectivity.Shutdown
-	ac.tearDownErr = err
-	ac.cc.handleSubConnStateChange(ac.acbw, ac.state)
-	if ac.events != nil {
-		ac.events.Finish()
-		ac.events = nil
-	}
-	if ac.ready != nil {
-		close(ac.ready)
-		ac.ready = nil
-	}
-	if channelz.IsOn() {
-		channelz.RemoveEntry(ac.channelzID)
-	}
-	return
-}
 
 func (ac *addrConn) getState() connectivity.State {
 	ac.mu.Lock()
@@ -1455,13 +1351,3 @@ func (ac *addrConn) getState() connectivity.State {
 	return ac.state
 }
 
-func (ac *addrConn) ChannelzMetric() *channelz.ChannelInternalMetric {
-	return &channelz.ChannelInternalMetric{}
-}
-
-// ErrClientConnTimeout indicates that the ClientConn cannot establish the
-// underlying connections within the specified timeout.
-//
-// Deprecated: This error is never returned by grpc and should not be
-// referenced by users.
-var ErrClientConnTimeout = errors.New("grpc: timed out when dialing")

@@ -112,14 +112,6 @@ func (cc *ClientConn) NewStream(ctx context.Context, desc *StreamDesc, method st
 	return newClientStream(ctx, desc, cc, method, opts...)
 }
 
-// NewClientStream creates a new Stream for the client side. This is typically
-// called by generated code.
-//
-// DEPRECATED: Use ClientConn.NewStream instead.
-func NewClientStream(ctx context.Context, desc *StreamDesc, cc *ClientConn, method string, opts ...CallOption) (ClientStream, error) {
-	return cc.NewStream(ctx, desc, method, opts...)
-}
-
 func newClientStream(ctx context.Context, desc *StreamDesc, cc *ClientConn, method string, opts ...CallOption) (_ ClientStream, err error) {
 	c := defaultCallInfo()
 	mc := cc.GetMethodConfig(method)
